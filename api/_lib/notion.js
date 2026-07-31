@@ -1,10 +1,23 @@
 import { Client } from '@notionhq/client'
 
-// Vite 개발 서버 미들웨어 전용 — Node 쪽에서만 실행되며 브라우저 번들에 포함되지 않는다.
-// 배포 시에는 이 파일을 Vercel Serverless Function으로 옮겨야 한다 (CLAUDE.md 배포 전환 항목 참고).
+// Vercel Serverless Function 전용 — Node 런타임에서만 실행되며 브라우저에 절대 노출되지 않는다.
+// 인증 정보는 코드에 직접 쓰지 않고 환경변수(NOTION_TOKEN, NOTION_DATABASE_ID)로 관리한다.
 
-function getClient(token) {
-  return new Client({ auth: token })
+function getClient() {
+  return new Client({ auth: process.env.NOTION_TOKEN })
+}
+
+// 웜 인스턴스 사이에 재사용되는 캐시. 콜드 스타트당 한 번만 데이터소스를 조회하면 된다.
+let cachedDataSourceId = null
+
+async function resolveDataSourceId(notion) {
+  if (cachedDataSourceId) return cachedDataSourceId
+
+  const database = await notion.databases.retrieve({
+    database_id: process.env.NOTION_DATABASE_ID,
+  })
+  cachedDataSourceId = database.data_sources[0].id
+  return cachedDataSourceId
 }
 
 function mapPage(page) {
@@ -21,17 +34,22 @@ function mapPage(page) {
   }
 }
 
-export async function listRecords({ token, dataSourceId }) {
-  const notion = getClient(token)
+export async function listRecords() {
+  const notion = getClient()
+  const dataSourceId = await resolveDataSourceId(notion)
+
   const response = await notion.dataSources.query({
     data_source_id: dataSourceId,
     sorts: [{ property: '완료일', direction: 'descending' }],
   })
+
   return response.results.map(mapPage)
 }
 
-export async function createRecord({ token, dataSourceId, data }) {
-  const notion = getClient(token)
+export async function createRecord(data) {
+  const notion = getClient()
+  const dataSourceId = await resolveDataSourceId(notion)
+
   const page = await notion.pages.create({
     parent: { data_source_id: dataSourceId },
     properties: {
@@ -44,11 +62,13 @@ export async function createRecord({ token, dataSourceId, data }) {
       커버이미지: { url: data.커버이미지 || null },
     },
   })
+
   return mapPage(page)
 }
 
-export async function updateRecord({ token, pageId, data }) {
-  const notion = getClient(token)
+export async function updateRecord(pageId, data) {
+  const notion = getClient()
+
   const page = await notion.pages.update({
     page_id: pageId,
     properties: {
@@ -57,11 +77,12 @@ export async function updateRecord({ token, pageId, data }) {
       커버이미지: { url: data.커버이미지 || null },
     },
   })
+
   return mapPage(page)
 }
 
 // 완전 삭제 대신 Notion 휴지통으로 보관 처리 — 조회 시 자동으로 제외되고, 필요하면 Notion에서 복구 가능하다.
-export async function archiveRecord({ token, pageId }) {
-  const notion = getClient(token)
+export async function archiveRecord(pageId) {
+  const notion = getClient()
   await notion.pages.update({ page_id: pageId, in_trash: true })
 }
