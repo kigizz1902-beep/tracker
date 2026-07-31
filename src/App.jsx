@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LibraryBig } from 'lucide-react'
 import {
   fetchRecords,
@@ -9,6 +9,9 @@ import {
 import Toolbar from './components/Toolbar'
 import RecordCard from './components/RecordCard'
 import SkeletonCard from './components/SkeletonCard'
+import EmptyState from './components/EmptyState'
+import ErrorState from './components/ErrorState'
+import Toast from './components/Toast'
 import AddRecordModal from './components/AddRecordModal'
 import EditRecordModal from './components/EditRecordModal'
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog'
@@ -18,18 +21,29 @@ const SKELETON_COUNT = 8
 function App() {
   const [records, setRecords] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [toastMessage, setToastMessage] = useState(null)
   const [filterType, setFilterType] = useState('전체')
   const [sortBy, setSortBy] = useState('완료일순')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
   const [deletingRecord, setDeletingRecord] = useState(null)
 
-  useEffect(() => {
+  const loadRecords = useCallback(() => {
+    setIsLoading(true)
+    setLoadError(null)
     fetchRecords()
       .then(setRecords)
-      .catch((error) => console.error(error))
+      .catch((error) => {
+        console.error(error)
+        setLoadError('데이터를 불러올 수 없습니다.')
+      })
       .finally(() => setIsLoading(false))
   }, [])
+
+  useEffect(() => {
+    loadRecords()
+  }, [loadRecords])
 
   const visibleRecords = useMemo(() => {
     const filtered =
@@ -47,6 +61,7 @@ function App() {
       setRecords((prev) => [created, ...prev])
     } catch (error) {
       console.error(error)
+      setToastMessage(error.message)
     }
   }
 
@@ -60,6 +75,7 @@ function App() {
       setRecords((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
     } catch (error) {
       console.error(error)
+      setToastMessage(error.message)
     }
   }
 
@@ -69,6 +85,7 @@ function App() {
       setRecords((prev) => prev.filter((r) => r.id !== id))
     } catch (error) {
       console.error(error)
+      setToastMessage(error.message)
     }
   }
 
@@ -94,10 +111,14 @@ function App() {
               <SkeletonCard key={i} />
             ))}
           </div>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={loadRecords} />
+        ) : records.length === 0 ? (
+          <EmptyState onAddClick={() => setIsAddOpen(true)} />
         ) : visibleRecords.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-24 text-neutral-400">
             <LibraryBig size={32} strokeWidth={1.5} />
-            <p className="text-sm">아직 기록이 없어요. 새 기록을 추가해보세요.</p>
+            <p className="text-sm">선택한 조건에 맞는 기록이 없습니다.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -134,6 +155,10 @@ function App() {
             setDeletingRecord(null)
           }}
         />
+      )}
+
+      {toastMessage && (
+        <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       )}
     </div>
   )
