@@ -24,6 +24,7 @@ function App() {
   const [loadError, setLoadError] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
   const [filterType, setFilterType] = useState('전체')
+  const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('완료일순')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
@@ -46,13 +47,16 @@ function App() {
   }, [loadRecords])
 
   const visibleRecords = useMemo(() => {
-    const filtered =
+    const byType =
       filterType === '전체' ? records : records.filter((r) => r.유형 === filterType)
+
+    const query = searchQuery.trim().toLowerCase()
+    const filtered = query ? byType.filter((r) => r.제목.toLowerCase().includes(query)) : byType
 
     return [...filtered].sort((a, b) =>
       sortBy === '평점순' ? b.평점 - a.평점 : b.완료일.localeCompare(a.완료일),
     )
-  }, [records, filterType, sortBy])
+  }, [records, filterType, searchQuery, sortBy])
 
   const handleAdd = async (record) => {
     const { id: _tempId, ...data } = record
@@ -100,6 +104,8 @@ function App() {
         <Toolbar
           filterType={filterType}
           onFilterChange={setFilterType}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
           sortBy={sortBy}
           onSortChange={setSortBy}
           onAddClick={() => setIsAddOpen(true)}
@@ -118,7 +124,9 @@ function App() {
         ) : visibleRecords.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-24 text-neutral-400">
             <LibraryBig size={32} strokeWidth={1.5} />
-            <p className="text-sm">선택한 조건에 맞는 기록이 없습니다.</p>
+            <p className="text-sm">
+              {searchQuery.trim() ? '검색 결과가 없습니다.' : '선택한 조건에 맞는 기록이 없습니다.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

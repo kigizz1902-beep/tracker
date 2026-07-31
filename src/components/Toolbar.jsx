@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 
 const FILTERS = [
   { value: '전체', label: '전체' },
@@ -6,7 +6,15 @@ const FILTERS = [
   { value: '영화', label: '영화' },
 ]
 
-function Toolbar({ filterType, onFilterChange, sortBy, onSortChange, onAddClick }) {
+function Toolbar({
+  filterType,
+  onFilterChange,
+  searchQuery,
+  onSearchChange,
+  sortBy,
+  onSortChange,
+  onAddClick,
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
@@ -24,6 +32,20 @@ function Toolbar({ filterType, onFilterChange, sortBy, onSortChange, onAddClick 
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="relative flex-1 sm:max-w-xs">
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+        />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="제목 검색"
+          className="w-full rounded-md border border-neutral-300 py-1.5 pl-9 pr-3 text-sm text-neutral-700 focus:border-purple-500 focus:outline-none"
+        />
       </div>
 
       <div className="flex items-center gap-3">
