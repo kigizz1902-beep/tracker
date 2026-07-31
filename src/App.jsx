@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LibraryBig } from 'lucide-react'
-import { fetchRecords } from './api/records'
+import {
+  fetchRecords,
+  createRecord,
+  updateRecord,
+  deleteRecord,
+} from './api/records'
 import Toolbar from './components/Toolbar'
 import RecordCard from './components/RecordCard'
 import SkeletonCard from './components/SkeletonCard'
@@ -35,12 +40,37 @@ function App() {
     )
   }, [records, filterType, sortBy])
 
-  const handleAdd = (record) => setRecords((prev) => [record, ...prev])
+  const handleAdd = async (record) => {
+    const { id: _tempId, ...data } = record
+    try {
+      const created = await createRecord(data)
+      setRecords((prev) => [created, ...prev])
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
-  const handleUpdate = (updated) =>
-    setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+  const handleUpdate = async (updated) => {
+    try {
+      const saved = await updateRecord(updated.id, {
+        평점: updated.평점,
+        한줄평: updated.한줄평,
+        커버이미지: updated.커버이미지,
+      })
+      setRecords((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
-  const handleDelete = (id) => setRecords((prev) => prev.filter((r) => r.id !== id))
+  const handleDelete = async (id) => {
+    try {
+      await deleteRecord(id)
+      setRecords((prev) => prev.filter((r) => r.id !== id))
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
