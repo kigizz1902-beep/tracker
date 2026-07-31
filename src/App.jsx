@@ -1,19 +1,30 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LibraryBig } from 'lucide-react'
-import { mockRecords } from './data/mockRecords'
+import { fetchRecords } from './api/records'
 import Toolbar from './components/Toolbar'
 import RecordCard from './components/RecordCard'
+import SkeletonCard from './components/SkeletonCard'
 import AddRecordModal from './components/AddRecordModal'
 import EditRecordModal from './components/EditRecordModal'
 import ConfirmDeleteDialog from './components/ConfirmDeleteDialog'
 
+const SKELETON_COUNT = 8
+
 function App() {
-  const [records, setRecords] = useState(mockRecords)
+  const [records, setRecords] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [filterType, setFilterType] = useState('전체')
   const [sortBy, setSortBy] = useState('완료일순')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
   const [deletingRecord, setDeletingRecord] = useState(null)
+
+  useEffect(() => {
+    fetchRecords()
+      .then(setRecords)
+      .catch((error) => console.error(error))
+      .finally(() => setIsLoading(false))
+  }, [])
 
   const visibleRecords = useMemo(() => {
     const filtered =
@@ -47,7 +58,13 @@ function App() {
           onAddClick={() => setIsAddOpen(true)}
         />
 
-        {visibleRecords.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : visibleRecords.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-24 text-neutral-400">
             <LibraryBig size={32} strokeWidth={1.5} />
             <p className="text-sm">아직 기록이 없어요. 새 기록을 추가해보세요.</p>
